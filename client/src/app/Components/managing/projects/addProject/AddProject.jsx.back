@@ -1,0 +1,460 @@
+import {
+  Grid,
+  Modal,
+  Typography
+} from "@mui/material";
+import Backdrop from "@mui/material/Backdrop";
+import Fade from "@mui/material/Fade";
+import { Box } from "@mui/system";
+import dayjs from "dayjs";
+import React, { useEffect, useRef, useState } from "react";
+import { useDispatch } from "react-redux";
+import { ReactSVG } from "react-svg";
+import { NOTIFY_ERROR, NOTIFY_SUCCESS } from "../../../../constants/constants";
+import useGetStateFromStore from "../../../../hooks/manage/getStateFromStore";
+import {
+  useCreateProjectMutation,
+  useGenerateProjectCodeMutation,
+  useGetChoiceForProjectCreationMutation,
+  useVerifyProjectCodeMutation
+} from "../../../../store/api/projects.api";
+import {
+  clearAddProjectState,
+  setAddProjectCode,
+  setLinkedProject,
+  setLinkingProject
+} from "../../../../store/reducers/manage.reducer";
+import faProject from "../../../public/svgs/light/diagram-project.svg";
+import faClose from "../../../public/svgs/light/xmark.svg";
+import Loading from "../../loading/Loading";
+import { notify } from "../../notification/notification";
+import AddBtn from "../AddBtn";
+import { addUserFormStyles, projectsStyles } from "../style";
+import SearchProjectCode from "./addProject/SearchProjectCode";
+import ProjectCreationForm from "./addProject/ProjectCreationForm";
+import ProjectTypeChoice from "./addProject/ProjectTypeChoice";
+import ProjectVerification from "./addProject/ProjectVerification";
+
+const style = {
+  position: "absolute",
+  top: "50%",
+  left: "50%",
+  transform: "translate(-50%, -50%)",
+  width: 400,
+  bgcolor: "background.paper",
+  borderRadius: 5,
+  boxShadow: 24,
+  minHeight: 290,
+  p: 4,
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  flexDirection: "column"
+};
+const largeStyle = {
+  position: "absolute",
+  top: "50%",
+  left: "50%",
+  transform: "translate(-50%, -50%)",
+  width: 500,
+  bgcolor: "background.paper",
+  borderRadius: 5,
+  boxShadow: 24,
+  minHeight: 290,
+  p: 4,
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  flexDirection: "column"
+};
+
+const newProjectInitialState = {
+  projectType: "",
+  code: {
+    value: undefined,
+    required: true
+  },
+  startDate: {
+    value: dayjs(new Date()),
+    required: true
+  },
+  name: {
+    value: undefined,
+    required: true
+  },
+  manager: {
+    value: "",
+    required: true
+  },
+  priority: {
+    value: undefined,
+    required: false
+  },
+  phase: {
+    value: "",
+    required: true
+  },
+  lot: {
+    value: [],
+    required: true
+  }
+};
+
+const initialError = {
+  filedName: undefined,
+  error: false,
+  message: ""
+};
+
+const AddProject = ({ refreshProjects }) => {
+  const classes = projectsStyles();
+  const projectState = useGetStateFromStore("manage", "addProject");
+  const [addForm, setAddForm] = useState(false);
+  const [verification, setVerification] = useState(false);
+  const [stepIdx, setStepIdx] = useState(0);
+  const externalClasses = addUserFormStyles();
+  const codeRef = useRef();
+  const dispatch = useDispatch();
+  const [generateProjectCode, { isLoading: loadingCode }] =
+    useGenerateProjectCodeMutation();
+  const [verifyProjectCode, { isLoading: codeVerification }] =
+    useVerifyProjectCodeMutation();
+
+  const [errorMessage, setErrorMessage] = useState(initialError);
+  const [newProject, setNewProject] = useState(newProjectInitialState);
+
+  const [getChoiceForProjectCreation, {}] =
+    useGetChoiceForProjectCreationMutation();
+
+  //ADD hooks
+  const [createProject, { isLoading: creatingProject }] =
+    useCreateProjectMutation();
+  // manage the modal open/close
+
+  const handleOpenAddForm = () => {
+    setAddForm(true);
+  };
+  const handleCloseAddForm = () => {
+    setAddForm(false);
+    dispatch(clearAddProjectState());
+    setStepIdx(0);
+    setNewProject(newProjectInitialState);
+    setErrorMessage(initialError);
+  };
+  //load the the necessary  data from the apis
+  useEffect(() => {
+    async function loadProjectCodeSuggestion() {
+      try {
+        const data = await generateProjectCode(newProject.projectType).unwrap();
+
+        dispatch(setAddProjectCode(data));
+      } catch (e) {
+        notify(NOTIFY_ERROR, e?.data?.message);
+      }
+    }
+
+    if (addForm) {
+      loadProjectCodeSuggestion();
+
+    }
+  }, [newProject.projectType]);
+
+  useEffect(() => {
+    async function loadChoiceForProject() {
+      try {
+        const data = await getChoiceForProjectCreation().unwrap();
+        dispatch(setLinkingProject(data?.isLinkingPossible));
+      } catch (error) {
+        notify(NOTIFY_ERROR, error?.data?.message);
+        console.log(error);
+      }
+    }
+    loadChoiceForProject();
+  }, [addForm]);
+
+  //manage the verification between steps and handle the change of the step
+
+  const handleNextStep = async () => {
+    switch (stepIdx) {
+      case 0:
+        setStepIdx((stepIdx) => stepIdx + 1);
+        break;
+      case 1:
+        //phase 1 check if there is code
+        // if (projectState.linkingProject){
+        //   dispatch(setLinkedProject())
+        //   break;
+        // }
+        try {
+          const data = await verifyProjectCode({
+            code: !codeRef.current?.value
+              ? projectState.code
+              : codeRef.current?.value
+          }).unwrap();
+          setStepIdx((stepIdx) => stepIdx + 1);
+          dispatch(setAddProjectCode({ validCode: parseInt(data?.code) }));
+        } catch (error) {
+          console.log(error);
+          // codeRef.current.value = error?.data?.code;
+          dispatch(
+            setAddProjectCode({ validCode: parseInt(error?.data?.code) })
+          );
+          setErrorMessage({ error: true, message: error?.data?.message });
+        }
+
+        break;
+      case 2:
+        // verify if all the attributes are filled
+        //the verification of the start date will be alone
+
+        if (!newProject.startDate.value) {
+          setNewProject({
+            ...newProject,
+            startDate: { ...newProject.startDate, value: "undefined" }
+          });
+          setErrorMessage({
+            filedName: "startDate",
+            error: true,
+            message: `date debut est requise!`
+          });
+          return;
+        }
+        for (let index = 1; index < Object.keys(newProject).length; index++) {
+          if (
+            Object.keys(newProject)[index] !== "code" &&
+            newProject[Object.keys(newProject)[index]].required
+          ) {
+            if (
+              !newProject[Object.keys(newProject)[index]].value ||
+              (Array.isArray(
+                newProject[Object.keys(newProject)[index]].value
+              ) &&
+                !newProject[Object.keys(newProject)[index]].value.length)
+            ) {
+              setErrorMessage({
+                filedName: Object.keys(newProject)[index],
+                error: true,
+                message: `${Object.keys(newProject)[index]} est requise!`
+              });
+              return;
+            }
+          }
+        }
+        setNewProject({
+          ...newProject,
+          code: { ...newProject.code, value: projectState.code }
+        });
+        setStepIdx((stepIdx) => stepIdx + 1);
+        setErrorMessage(initialError);
+        setVerification(true);
+        setTimeout(() => {
+          setVerification(false);
+        }, 2000);
+        break;
+      default:
+        break;
+    }
+  };
+
+  const getErrorMessage = (name) => {
+    if (errorMessage.filedName === name) {
+      return errorMessage;
+    }
+  };
+  //go to the previous step
+  const handlePrevStep = () => {
+    setStepIdx((stepIdx) => stepIdx - 1);
+  };
+
+  //adding the project
+  const handleAdd = async () => {
+    try {
+      const {
+        code: { value: codeValue },
+        name: { value: nameValue },
+        startDate: { value: startDateValue },
+        manager: { value: managerValue },
+        priority: { value: priorityValue },
+        phase: { value: phaseValue },
+        lot: { value: lotValue }
+      } = newProject;
+
+      const project = {
+        code: codeValue,
+        name: nameValue,
+        startDate: startDateValue,
+        manager: managerValue,
+        priority: priorityValue,
+        phase: phaseValue,
+        lot: lotValue,
+        linked: projectState.linkingProject,
+        active: true
+      };
+
+      // const project = newProject;
+      if (projectState.customCode !== projectState.code) {
+        project.isCodeCustomized = true;
+      } else {
+        project.isCodeCustomized = false;
+      }
+      const data = await createProject(project).unwrap();
+      console.log(data);
+
+      notify(NOTIFY_SUCCESS, data.message);
+      handleCloseAddForm();
+      // dispatch(updateProjectList(project))
+      refreshProjects();
+    } catch (error) {
+      notify(NOTIFY_ERROR, error?.data.message);
+    }
+  };
+
+  const handleLotChange = (event) => {
+    const {
+      target: { value }
+    } = event;
+
+    setNewProject({
+      ...newProject,
+      lot: {
+        ...newProject.lot,
+        value: typeof value === "string" ? value.split(",") : value
+      }
+    });
+  };
+  const handleDataChange = (e) => {
+    setNewProject({
+      ...newProject,
+      [e.target.name]: { ...newProject[e.target.name], value: e.target.value }
+    });
+  };
+
+  // console.log(newProject);
+
+  const handleChooseType = (e) => {
+    if (e.target.name === "oldProject") {
+      setNewProject({ ...newProject, projectType: "old" });
+    } else {
+      setNewProject({ ...newProject, projectType: "new" });
+    }
+
+    handleNextStep();
+  };
+  const renderStep = (step) => {
+    switch (step) {
+      case 0:
+        return <ProjectTypeChoice
+         handleChooseType={handleChooseType} />;
+
+      case 1:
+        return (
+          <SearchProjectCode
+            errorMessage={errorMessage}
+            codeRef={codeRef}
+            loading={loadingCode}
+          />
+        );
+      case 2:
+        return (
+          <ProjectCreationForm
+            getErrorMessage={getErrorMessage}
+            newProject={newProject}
+            setNewProject={setNewProject}
+            handleDataChange={handleDataChange}
+            handleLotChange={handleLotChange}
+            handleCloseAddForm={handleCloseAddForm}
+            formOpen={addForm}
+          />
+        );
+      case 3:
+          <ProjectVerification
+            project ={newProject}
+            verification={verification}
+          />
+
+      default:
+        return <h1>step default {step}</h1>;
+    }
+  };
+
+  return (
+    <>
+      <div className={classes.addBtnContainer}>
+        <AddBtn
+          title="Créer un projet"
+          icon={faProject}
+          handleAdd={handleOpenAddForm}
+        />
+
+        {/* <Modal
+          aria-labelledby="transition-modal-title"
+          aria-describedby="transition-modal-description"
+          open={addForm}
+          onClose={handleCloseAddForm}
+          closeAfterTransition
+          slots={{ backdrop: Backdrop }}
+          slotProps={{
+            backdrop: {
+              timeout: 500
+            }
+          }}
+        >
+          <Fade in={addForm}>
+            <Box sx={stepIdx !== 2 ? style : largeStyle}>
+              {!codeVerification ? (
+                <>
+                  <div className={classes.closeModalBtn}>
+                    <button onClick={handleCloseAddForm}>
+                      <ReactSVG src={faClose} />
+                    </button>
+                  </div>
+                  {!verification && (
+                    <Typography
+                      id="transition-modal-title"
+                      className={classes.modalTitle}
+                      variant="h6"
+                      component="h2"
+                      align="left"
+                    >
+                      Créer un projet
+                    </Typography>
+                  )}
+                  <Grid container spacing={2}>
+                    {renderStep(stepIdx)}
+
+                    {!verification && stepIdx !== 0 && (
+                      <>
+                        <Grid item xs={12} sm={12} md={6} lg={6}>
+                          <button
+                            onClick={
+                              stepIdx > 0 ? handlePrevStep : handleCloseAddForm
+                            }
+                            className={externalClasses.cancelBtn}
+                          >
+                            {stepIdx > 0 ? "Précedent" : "Cancel"}
+                          </button>
+                        </Grid>
+                        <Grid item xs={12} sm={12} md={6} lg={6}>
+                          <button
+                            onClick={stepIdx < 3 ? handleNextStep : handleAdd}
+                            className={externalClasses.saveBtn}
+                          >
+                            {stepIdx < 3 ? "Suivant " : "Créer"}
+                          </button>
+                        </Grid>
+                      </>
+                    )}
+                  </Grid>
+                </>
+              ) : (
+                <Loading color="var(--orange)" />
+              )}
+            </Box>
+          </Fade>
+        </Modal> */}
+      </div>
+    </>
+  );
+};
+
+export default AddProject;

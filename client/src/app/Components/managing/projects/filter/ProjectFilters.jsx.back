@@ -1,0 +1,174 @@
+import React, { useMemo, useState } from "react";
+import { useDispatch } from "react-redux";
+import useGetStateFromStore from "../../../../../hooks/manage/getStateFromStore";
+import { filterProjectsList } from "../../../../../store/reducers/manage.reducer";
+import Filter from "./Filter";
+import { filterStyles } from "./style";
+
+const init = {
+  manager: "",
+  state: "",
+  phase: "",
+  lot: ""
+};
+const ProjectFilters = () => {
+  const classes = filterStyles();
+  const [selected, setSelected] = useState(init);
+
+  const projects = useGetStateFromStore("manage", "projectsList");
+  const dispatch = useDispatch();
+
+  const selectStates = () => {
+    const list = [];
+    projects.forEach((project) => {
+      let exist = list.filter((item) => item === project.state);
+      if (!exist.length) {
+        list.push(project.state);
+      }
+    });
+    return list;
+  };
+  const selectManagers = () => {
+    const list = [];
+    projects.forEach((project) => {
+      let exist = list.filter(
+        (item) => item.fullName === project.manager.fullName
+      );
+      if (!exist.length) {
+        list.push(project.manager);
+      }
+    });
+    return list;
+  };
+
+  const selectLots = () => {
+    function getDifferentLots(list1, list2) {
+      return list2.filter((element) => !list1.includes(element));
+    }
+    var list = [];
+    projects.forEach((project) => {
+      if (!project.lots.every((lot) => list.includes(lot))) {
+        const lotsToAdd = getDifferentLots(list, project.lots);
+        list = list.concat(lotsToAdd);
+      }
+    });
+    return list;
+  };
+
+  const selectPhases = () => {
+    const list = [];
+    projects.forEach((project) => {
+      let exist = list.filter((item) => item === project.activePhase);
+      if (!exist.length) {
+        list.push(project.activePhase);
+      }
+    });
+    return list;
+  };
+
+  const handleChangeManager = (value) => {
+    setSelected({ ...selected, manager: value });
+
+    dispatch(
+      filterProjectsList({
+        flag: true,
+        value: value?.fullName,
+        attribute: "manager.fullName"
+      })
+    );
+  };
+
+  const handChangeState = (value) => {
+    setSelected({ ...selected, state: value });
+
+    dispatch(
+      filterProjectsList({
+        flag: true,
+
+        value: value,
+        attribute: "state"
+      })
+    );
+  };
+  const handleChangePhase = (value) => {
+    setSelected({ ...selected, phase: value });
+    dispatch(
+      filterProjectsList({
+        flag: true,
+        value: value,
+        attribute: "activePhase"
+      })
+    );
+  };
+
+  const handleChangeLots = (value) => {
+    setSelected({ ...selected, lot: value });
+    dispatch(
+      filterProjectsList({
+        flag: true,
+        value: value,
+        attribute: "lots"
+      })
+    );
+  };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const managers = useMemo(() => selectManagers(), [projects]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const states = useMemo(() => selectStates(), [projects]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const lots = useMemo(() => selectLots(), [projects]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const phase = useMemo(() => selectPhases(), [projects]);
+
+  const filters = [
+    {
+      type: "manager.fullName",
+      ref: selected.manager,
+      items: managers,
+      title: "Filtre par chef de projet",
+      handler: handleChangeManager
+    },
+    {
+      type: "state",
+      ref: selected.state,
+      items: states,
+      title: "Filtre par etat du projet",
+      handler: handChangeState
+    },
+    {
+      type: "phase",
+      ref: selected.phase,
+      items: phase,
+      title: "Filtre par phase",
+      handler: handleChangePhase
+    },
+    {
+      type: "lots",
+      ref: selected.lot,
+      items: lots,
+      title: "Filtre par lot",
+      handler: handleChangeLots
+    }
+  ];
+  return (
+    <div className={classes.filters}>
+      {/* <FilterPerManger />
+        <FilterPerState />
+        <FilterPerPhase />
+        <FilterPerLots /> */}
+      {filters.map((filter, idx) => (
+        <Filter
+          key={idx}
+          items={filter.items}
+          handleChange={filter.handler}
+          value={filter.ref}
+          label={filter.title}
+          filterType={filter.type}
+        />
+      ))}
+    </div>
+  );
+};
+
+export default ProjectFilters;

@@ -1,0 +1,47 @@
+{
+  "name": "chronos",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "stage.client": "cd client && npm i ",
+    "stage.server": "cd server && npm i ",
+    "stage.chronos": "concurrently \"npm run stage.client\" \"npm run stage.server\"",
+    "start.client": "cd client && npm run start:prod",
+    "start.dev.client": "cd client && npm run start:dev",
+    "start.server": "cd server && npm start",
+    "start.dev.server": "cd server && npm run start:dev",
+    "chronos": "concurrently \"npm run start.client\" \"npm run start.server\"",
+    "dev.chronos": "concurrently \"npm run start.dev.client\" \"npm run start.dev.server\"",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "migrate-data":"cd server && node ./scripts/syncDB.js",
+    "migrate-data-v2":"cd server && node ./scripts/syncDBFromJSON.js --prod",
+    "migrate-data-v2.dev":"cd server && node  ./scripts/syncDBFromJSON.js --dev",
+    "migrate-data-test":"cd server && node ./scripts/syncDB.test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ITsolutionBadr/chronos.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ITsolutionBadr/chronos/issues"
+  },
+  "homepage": "https://github.com/ITsolutionBadr/chronos#readme",
+  "dependencies": {
+    "concurrently": "^8.2.1",
+    "react-svg": "^16.1.26"
+  },
+  "cspell": {
+    "language": "en,fr",
+    "version": "0.2",
+    "ignorePaths": [],
+    "dictionaryDefinitions": [],
+    "dictionaries": [],
+    "words": [
+      "interv"
+    ],
+    "ignoreWords": [],
+    "import": []
+  }
+}

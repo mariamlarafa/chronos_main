@@ -1,0 +1,473 @@
+import React, { useState } from "react";
+import { useDispatch } from "react-redux";
+import { useNavigate } from "react-router";
+import { ReactSVG } from "react-svg";
+import useGetStateFromStore from "../../../../hooks/manage/getStateFromStore";
+import { setLinkedProject } from "../../../../store/reducers/manage.reducer";
+import { listStyle, projectsStyles } from "../style";
+// import { projectTestList } from "./test/projectList.test";
+import Tooltip from "@mui/material/Tooltip";
+import { DataGrid, GridActionsCellItem, frFR } from "@mui/x-data-grid";
+import dayjs from "dayjs";
+import "dayjs/locale/fr";
+import {
+  STATE_BLOCKED,
+  STATE_DOING,
+  TASK_STATE_TRANSLATION
+} from "../../../../constants/constants";
+import useIsUserCanAccess from "../../../../hooks/access";
+import { formattedDate } from "../../../../store/utils";
+import faAdd from "../../../public/svgs/solid/plus.svg";
+import CustomNoRowsOverlay from "../../NoRowOverlay/CustomNoRowsOverlay";
+import CustomDataGridHeaderColumnMenu from "../../customDataGridHeader/CustomDataGridHeaderColumnMenu";
+import CustomDataGridToolbar from "../../customDataGridToolbar/CustomDataGridToolbar";
+import { CustomCancelIcon, CustomPlusIcon } from "../../icons";
+import { projectTaskDetails } from "../../projects/style";
+import LinkProject from "./addProject/LinkProject";
+import { priorityColors } from "./addProject/PriorityField";
+import ProjectFilters from "./filter/ProjectFilters";
+
+const ProjectList = ({ addForm, handleForm, loadingProjectList }) => {
+  const classes = projectsStyles();
+  const tasksStyles = projectTaskDetails();
+
+  const { isSuperUser, isManager } = useIsUserCanAccess();
+  const projects = useGetStateFromStore("manage", "projectsList");
+  const tasks = useGetStateFromStore("manage", "projectsTaskList");
+  const twoWeeksDates = useGetStateFromStore("project", "twoWeeksList");
+  const colors = useGetStateFromStore("userInfo", "avatarColors");
+  const addProjectState = useGetStateFromStore("manage", "addProject");
+  const [projectToCollapse, setProjectToCollapse] = useState(undefined);
+  const navigate = useNavigate();
+  const listClasses = listStyle();
+  // const [emptyMessage, setEmptyMessage] = useState("");
+
+  const dispatch = useDispatch();
+  const getPriorityColor = (id) => {
+    const priority = priorityColors.filter((color) => color.value === id)[0];
+    if (!priority) return { code: "var(--bright-orange)", value: -1 };
+
+    return { code: priority.code, value: priority.value };
+  };
+
+  const projectManagerNamesOption = () => {
+    let names = [];
+    projectList().forEach((item) => {
+      if (!names.includes(item?.manager?.fullName)) {
+        names.push(item?.manager?.fullName);
+      }
+    });
+    return names;
+  };
+  const phaseOptionValues = () => {
+    let phases = [];
+    projectList().forEach((item) => {
+      if (!phases.includes(item?.activePhase)) {
+        phases.push(item?.activePhase);
+      }
+    });
+    return phases;
+  };
+
+  function projectTasks(projectID) {
+    const projectTasksList = tasks?.filter(
+      (item) => item.projectID === projectID
+    );
+    if (!projectTasksList) return [];
+
+    return projectTasksList[0]?.tasks;
+  }
+
+  const isProjectCollapsed = (id) => {
+    if (projectToCollapse === id) return true;
+    return false;
+  };
+
+  function convertTwoWeeksDates() {
+    return twoWeeksDates?.map(({ date }) => {
+      return date.split(" ")[1];
+    });
+  }
+
+  const getColumns = () => {
+    const columns = [
+      {
+        headerName: "Nom du projet",
+        field: "projectCustomId",
+        width: 200,
+        renderCell: (params) => {
+          return (
+            <Tooltip title={params.row?.projectCustomId}>
+              <p className={classes.projectName}>
+                <span
+                  className="priority"
+                  style={{
+                    backgroundColor: getPriorityColor(params.row.priority).code
+                  }}
+                ></span>
+
+                {params.row?.projectCustomId}
+              </p>
+            </Tooltip>
+          );
+        }
+      },
+      {
+        headerName: "CP",
+        field: "manager",
+        filterable: true,
+        width: 50,
+        type: "singleSelect",
+        valueOptions: projectManagerNamesOption(),
+        valueGetter: (params) => params.row?.manager?.fullName,
+        // filterValueGetter: (params) => params.row?.manager?.fullName,
+        renderCell: (params) => {
+          if (params.row.manager.image) {
+            return (
+              <div className={classes.managerContainer}>
+                <img
+                  className={classes.avatar}
+                  src={`${process.env.REACT_APP_SERVER_URL}${params.row.manager.image}`}
+                  alt={`manager ${params.row.manager.fullName} avatar`}
+                />
+                {/* <p className={classes.managerFullName}>
+                  {params.row.manager.fullName}
+                </p> */}
+              </div>
+            );
+          }
+          return (
+            <div className={classes.managerContainer}>
+              <span
+                className={`${classes.avatar} ${
+                  colors[params.row.id % colors?.length]
+                }`}
+              >
+                {params.row.manager?.fullName[0]?.toUpperCase()}
+                {params.row.manager?.fullName.split(" ")[1][0].toUpperCase()}
+              </span>
+              {/* <p className={classes.managerFullName}>
+                {params.row.manager.fullName}
+              </p> */}
+            </div>
+          );
+        }
+      },
+      {
+        headerName: "Lots",
+        field: "lots",
+        width: 60,
+        renderCell: (params) => {
+          return params.row.lots.map((content) => (
+            <p key={content} className={classes.lot} label={content}>
+              {content}
+            </p>
+          ));
+        }
+      },
+      {
+        headerName: "Phase",
+        field: "activePhase",
+        type: "singleSelect",
+        filterable: true,
+        valueOptions: phaseOptionValues(),
+        valueGetter: (params) => params.row?.activePhase,
+        width: 70
+      },
+      {
+        headerName: " ",
+        field: "tasks",
+        filterable: false,
+        width: 270,
+        columnMenu: false,
+        sortable: false,
+        menu: false,
+        renderCell: (params) => {
+          const tasksNb = projectTasks(params.row.id)?.length;
+          if (!tasksNb)
+            return (
+              <p className={classes.emptyTasks}>
+                {" "}
+                il n'y a pas de tâches planifiées{" "}
+              </p>
+            );
+          const taskInfoElement = tasksNb ? (
+            projectTasks(params.row.id)?.map((task, idx) => {
+              return (
+                <div key={idx} className={classes.taskStates}>
+                  <Tooltip title={task?.name}>{task?.name}</Tooltip>
+                </div>
+              );
+            })
+          ) : (
+            <p className={classes.emptyTasks}>
+              {" "}
+              il n'y a pas de tâches planifiées{" "}
+            </p>
+          );
+
+          if (tasksNb > 1 && isProjectCollapsed(params.row.id))
+            return <div className={classes.task}>{taskInfoElement}</div>;
+          if (taskInfoElement.length)
+            return (
+              <div className={classes.task}>{taskInfoElement?.shift()}</div>
+            );
+        }
+      },
+      {
+        headerName: "Status",
+        field: "phaseStatus",
+        width: 120,
+        filterable: false,
+        columnMenu: false,
+        sortable: false,
+        menu: false,
+        renderCell: (params) => {
+          let tasksNb = projectTasks(params.row.id)?.length;
+          if (!tasksNb) return null;
+          const taskStateElement = tasksNb ? (
+            projectTasks(params.row.id)?.map((task, idx) => {
+              return (
+                <div key={idx} className={classes.taskStates}>
+                  <span className={`${tasksStyles.task} ${task.state} wb`}>
+                    {
+                      TASK_STATE_TRANSLATION.filter(
+                        (state) => state.label === task.state
+                      )[0]?.value
+                    }
+                  </span>
+                </div>
+              );
+            })
+          ) : (
+            <span></span>
+          );
+
+          if (tasksNb > 1 && isProjectCollapsed(params.row.id))
+            return <div>{taskStateElement}</div>;
+
+          if (taskStateElement?.length)
+            return <div>{taskStateElement?.shift()}</div>;
+        }
+      },
+      {
+        headerName: "dates",
+        field: "dates",
+        width: twoWeeksDates.length * 40,
+        filterable: false,
+        columnMenu: false,
+        sortable: false,
+        menu: false,
+        renderHeader: () => {
+          return (
+            <div className={classes.datesData}>
+              {twoWeeksDates?.map(({ date, weekend }, index) => (
+                <div
+                  key={index}
+                  className={classes.dateColumn}
+                  // style={{ minWidth: 14, maxWidth: 14 }}
+                >
+                  <p
+                    data-header-date={date}
+                    className={`${classes.dateTitle} ${
+                      weekend ? "disabled" : ""
+                    }`}
+                    key={index}
+                  >
+                    {date[0].toUpperCase()}
+                  </p>
+                </div>
+              ))}
+            </div>
+          );
+        },
+
+        renderCell: (params) => {
+          const convertedDates = convertTwoWeeksDates();
+
+          // console.log(convertedDates);
+          const taskElements = projectTasks(params.row.id)?.map((task, idx) => {
+            // Perform calculations here
+            let { startDate, dueDate } = task;
+            //converting dates
+            let start = formattedDate(startDate, true);
+            let due = formattedDate(dueDate, true);
+
+            let startIdx = convertedDates.findIndex((date) => date === start);
+            let dueIdx = convertedDates.findIndex((date) => date === due);
+            // console.log("start date ",start," postion ", startIdx," end date ",due," position",dueIdx);
+            let width = 0;
+            let position = 0;
+            if (startIdx === -1 && dueIdx === -1) {
+              let startConverted = dayjs(start, "DD/MM/YYYY");
+              let dueConverted = dayjs(due, "DD/MM/YYYY");
+
+              if (
+                startConverted < dayjs(new Date()) &&
+                dueConverted > dayjs(new Date())
+              ) {
+                width = 15 * 40;
+                position = 0;
+              }
+            } else {
+              position = startIdx !== -1 ? startIdx * 40 : 0;
+              let diff = startIdx > -1 ? startIdx : 0;
+              width =
+                dueIdx !== -1
+                  ? dueIdx
+                    ? (dueIdx - diff) * 40
+                    : 1 * 40
+                  : (convertedDates.length - startIdx) * 40;
+            }
+
+            return (
+              <div
+                data-date={task.dueDate}
+                key={idx}
+                style={{ width: width, transform: `translateX(${position}px)` }}
+                className={classes.progressBarContainer}
+              >
+                <span className={classes.progressBar}>
+                  {dayjs(task.dueDate).locale("fr").format("dddd DD/MM/YYYY ")}
+                </span>
+              </div>
+            );
+          });
+          const tasksNb = projectTasks(params.row.id)?.length;
+
+          if (tasksNb > 1 && isProjectCollapsed(params.row.id))
+            return <div>{taskElements}</div>;
+
+          if (taskElements?.length) return <div>{taskElements?.shift()}</div>;
+        }
+      },
+      {
+        field: "actions",
+        type: "actions",
+        headerName: " ",
+        width: 20,
+        cellClassName: "actions",
+        getActions: ({ id, row }) => {
+          const renderActions = [];
+          // console.log(row)
+          const tasksNb = projectTasks(row.id)?.length;
+          // console.log(tasks);
+          if (tasksNb > 1 && !isProjectCollapsed(row.id)) {
+            renderActions.push(
+              <GridActionsCellItem
+                label="voir plus tache"
+                data-project-id={row.id}
+                icon={<CustomPlusIcon className={tasksStyles.icon} />}
+                className="textPrimary"
+                onClick={() => setProjectToCollapse(row.id)}
+                color="inherit"
+              />
+            );
+          } else if (tasksNb > 1) {
+            renderActions.push(
+              <GridActionsCellItem
+                label="voir moindre tache"
+                data-project-id={row.id}
+                icon={<CustomCancelIcon className={tasksStyles.icon} />}
+                className="textPrimary"
+                onClick={() => setProjectToCollapse(undefined)}
+                color="inherit"
+              />
+            );
+          }
+
+          return renderActions;
+        }
+      }
+    ];
+    return columns;
+  };
+
+  const handleNavigation = (rowID) => {
+    navigate(`/projects/${rowID}`);
+  };
+
+  const projectList = () => {
+    if (addForm || addProjectState.isFiltering) {
+      return addProjectState.projectsListFiltered;
+    }
+    return projects.filter((project) =>
+      [STATE_DOING, STATE_BLOCKED].includes(project.state)
+    );
+  };
+
+  const handleClickProject = (rowID) => {
+    dispatch(setLinkedProject(rowID));
+    const elements = document.querySelectorAll(".row-data");
+    elements.forEach((element) => {
+      element.classList.remove("active");
+    });
+  };
+
+  const getRowClassName = (params) => {
+    return params.row.requestsTreated === false ? "notTreatedRequest" : "";
+  };
+
+  return (
+    <div
+      style={addForm ? { height: "calc(100% - 188px)" } : { height: "99.5%" }}
+      className={classes.listContainer}
+    >
+      <div className={classes.header}>
+        {!addForm && (
+          <div className={classes.addBtnContainer}>
+            <LinkProject
+              className={classes.search}
+              color="secondary"
+              label=" "
+              size="small"
+            />
+
+            {(isSuperUser || isManager) && (
+              <>
+                <ProjectFilters />
+                <button className="add-project" onClick={handleForm}>
+                  <ReactSVG src={faAdd} />
+                </button>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+      <DataGrid
+        localeText={frFR.components.MuiDataGrid.defaultProps.localeText}
+        loading={loadingProjectList}
+        className={`${listClasses.list} integrated`}
+        rows={projectList()}
+        columns={getColumns()}
+        getRowClassName={getRowClassName}
+        onRowSelectionModelChange={
+          addProjectState.isFiltering && addForm
+            ? handleClickProject
+            : handleNavigation
+        }
+        sx={{ "--DataGrid-overlayHeight": "180px !important" }}
+        initialState={{
+          pagination: {
+            paginationModel: {
+              pageSize: 100
+            }
+          }
+        }}
+        // localeText={{
+        //   toolbarExportCSV: "kharej o CSV",
+        // }}
+
+        slots={{
+          columnMenu: CustomDataGridHeaderColumnMenu,
+          noRowsOverlay: CustomNoRowsOverlay,
+          toolbar: CustomDataGridToolbar
+        }}
+        pageSizeOptions={[100]}
+        // disableRowSelectionOnClick
+      />
+    </div>
+  );
+};
+
+export default ProjectList;

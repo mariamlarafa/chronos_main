@@ -1,0 +1,200 @@
+[
+    {
+     "email": "omranebelkahla@outlook.fr",
+     "password": "Kairos",
+     "role": "Chef de projet",
+     "lastName": "Belkahla",
+     "name": "Omrane ",
+     "poste": "Ingénieur ",
+     "phone": 52758687,
+     "address": "Giratoire l'école,route touristique chat meriem,sousse",
+     "hireDate": "12\/05\/2017"
+    },
+    {
+     "email": "nizarmalek10@gmail.com",
+     "password": "Kairos",
+     "role": "intervenant",
+     "lastName": "Ghamem Malek ",
+     "name": "Mouhamed Nizar ",
+     "poste": "Technicien supérieur",
+     "phone": 50736538,
+     "address": "2 Rue Sidi Bou Said Ariana",
+     "hireDate": "01\/01\/2022"
+    },
+    {
+     "email": "slim.benzaied97@gmail.com",
+     "password": "Kairos",
+     "role": "Chef de projet",
+     "lastName": "Ben Zeid ",
+     "name": "Slim",
+     "poste": "Ingénieur ",
+     "phone": 21298868,
+     "address": "Rue des fleurs, Résidence Wiem , Bloc E , Les Jardins de l'Aouina",
+     "hireDate": "01\/01\/2022"
+    },
+    {
+     "email": "madyounimarwa@gmail.com",
+     "password": "Kairos",
+     "role": "intervenant",
+     "lastName": "Madiouni",
+     "name": "Marwa",
+     "poste": "Technicien supérieur",
+     "phone": 93486402,
+     "address": "6 Rue 10483 El-Ouardia 1, Tunis",
+     "hireDate": "04\/18\/2022"
+    },
+    {
+     "email": "iheb_azizi@yahoo.fr",
+     "password": "Kairos",
+     "role": "intervenant",
+     "lastName": "Azizi ",
+     "name": "Iheb ",
+     "poste": "Technicien supérieur",
+     "phone": 23556659,
+     "address": "Résidence diar el mesk app B-13, ain zaghouane",
+     "hireDate": "09\/01\/2021"
+    },
+    {
+     "email": "oussamadkhili@outlook.com",
+     "password": "Kairos",
+     "role": "intervenant",
+     "lastName": "Dkhili ",
+     "name": "Oussama",
+     "poste": "Technicien supérieur",
+     "phone": 21290065,
+     "address": "24, Rue ain sobah chotrana 1 la soukra Ariana",
+     "hireDate": "04\/25\/2022"
+    },
+    {
+     "email": "eyariebi26@gmail.com",
+     "password": "Kairos",
+     "role": "intervenant",
+     "lastName": "Riabi ",
+     "name": "Eya ",
+     "poste": "Technicien supérieur",
+     "phone": 29833788,
+     "address": "18 Rue ain zaghouan, Chotrana 1 Ariana",
+     "hireDate": "09\/01\/2022"
+    },
+    {
+     "email": "aridhimoez@gmail.com",
+     "password": "Kairos",
+     "role": "Chef de projet",
+     "lastName": "Aridhi ",
+     "name": "Moez",
+     "poste": "Ingénieur ",
+     "phone": 20850217,
+     "address": "11 Rue Arrayhane - cité al amal, hammem chatt",
+     "hireDate": "02\/20\/2023"
+    },
+    {
+     "email": "ghassenlahmer03@gmail.com",
+     "password": "Kairos",
+     "role": "intervenant",
+     "lastName": "Lahmer ",
+     "name": "Ghassen ",
+     "poste": "Technicien supérieur",
+     "phone": 26416654,
+     "address": "Rue 7425 cité khaled ibn el walid manouba ",
+     "hireDate": "06\/01\/2023"
+    },
+    {
+     "email": "omarmahjoub321@gmail.com",
+     "password": "Kairos",
+     "role": "intervenant",
+     "lastName": "Mahjoub ",
+     "name": "Omar",
+     "poste": "Technicien supérieur",
+     "phone": 20208074,
+     "address": "11 Rue Hmida belhadj kacem avicenne 2 , Tunis",
+     "hireDate": "02\/01\/2021"
+    },
+    {
+     "email": "mbarekmouna9@gmail.com",
+     "password": "Kairos",
+     "role": "intervenant",
+     "lastName": "Mbarek ",
+     "name": "Mouna ",
+     "poste": "Technicien supérieur",
+     "phone": 52341433,
+     "address": "26,Rue habib Thameur kheireddine la goulette , Tunis ",
+     "hireDate": "10\/02\/2023"
+    },
+    {
+     "email": "nawres.akrout@gmail.com",
+     "password": "Kairos",
+     "role": "intervenant",
+     "lastName": "Akrout ",
+     "name": "Nawres",
+     "poste": "Ingénieur ",
+     "phone": 92044382,
+     "address": "Résidence tour des Belvédères, Avenue Alain Savary, Tunis 1002",
+     "hireDate": "10\/16\/2023"
+    },
+    {
+     "email": "molkaaraarstt@gmail.com",
+     "password": "Kairos",
+     "role": "intervenant",
+     "lastName": "Araar",
+     "name": "Molka",
+     "poste": "Technicien supérieur",
+     "phone": 90459227,
+     "address": "2 rue youssef tmimi cité bochra mourouj 4 ",
+     "hireDate": "01\/15\/2024"
+    },
+    {
+     "email": "y.chokki@urbs-engineering.com",
+     "password": "Kairos",
+     "role": "Chef de projet",
+     "lastName": "Chokki",
+     "name": "Yassine",
+     "poste": "Ingénieur ",
+     "phone": 95883127,
+     "address": "App D01 Bloc Cerisier, résidence jardin de Gammarth, 1057 Gammarth",
+     "hireDate": "05\/01\/2021"
+    },
+    {
+     "email": "ssengineering.tn@gmail.com",
+     "password": "Kairos",
+     "role": "Chef de projet",
+     "lastName": "Chebaane",
+     "name": "Amine",
+     "poste": "Ingénieur ",
+     "phone": 50948434,
+     "address": "Bloc W appartement 206 Boukornine Hammalif ben Arous",
+     "hireDate": "02\/01\/2017"
+    },
+    {
+     "email": "f.chemmem@midgardengineering.net",
+     "password": "Kairos",
+     "role": "Administrateur",
+     "lastName": "Chemmem",
+     "name": "Fadhel",
+     "poste": "Ingénieur ",
+     "phone": 58977933,
+     "address": "38, Rue El saoud Bloc B appt 2 Manar 2 Tunis",
+     "hireDate": "02\/01\/2017"
+    },
+    {
+     "email": "dhiadkhili51@gmail.com",
+     "password": "Kairos",
+     "role": "intervenant",
+     "lastName": "Dhkhili ",
+     "name": "Dhiaeddine ",
+     "poste": "Technicien supérieur",
+     "phone": 54047091,
+     "address": "Rue Ali douagi hammam-lif",
+     "hireDate": "03\/01\/2023"
+    },
+    {
+     "email": "louay191998@gmail.com",
+     "password": "Kairos",
+     "role": "intervenant",
+     "lastName": "Ben ouannes ",
+     "name": "Louay ",
+     "poste": "Technicien supérieur",
+     "phone": 23076767,
+     "address": "av jaafer -jaafer 2 Ariana",
+     "hireDate": "04\/11\/2022"
+    }
+   ]

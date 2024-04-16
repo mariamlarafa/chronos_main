@@ -1,0 +1,63 @@
+version: "2.4"
+services:
+  kairos_client_web:
+    container_name: kairos_client_web_local
+    build:
+      context: ./client/.
+      dockerfile: Dockerfile
+    # volumes:
+    #  - ./client:/kairos/client
+    ports:
+      - "9993:80"
+    # command: npm i && npm run start:dev
+    #command:  nginx -g daemon off
+    restart: always
+    depends_on:
+      mysql_db:
+        condition: service_healthy
+    networks:
+      default:
+    environment:
+      REACT_APP_API_URL: http://196.179.204.249:9995/api
+      REACT_APP_SERVER_URL: http://196.179.204.249:9995
+      REACT_APP_DOMAIN: 196.179.204.249
+  kairos_node_server:
+    container_name: kairos_node_server_local
+    build:
+      context: ./server/.
+      dockerfile: Dockerfile
+    # volumes:
+    #   - ./server:/kairos/server
+    depends_on:
+      mysql_db:
+        condition: service_healthy
+    ports:
+      - "9995:5000"
+    command: "npm run start"
+    restart: always
+    environment:
+      DB_HOST: mysql_db
+      DB_PORT: 3306
+      SERVER_URL: http://196.179.204.249:9995
+      LMS_HOST: 196.179.204.249:9993
+    networks:
+      default:
+  mysql_db:
+    image: mysql:8.2.0
+    command: mysqld --character-set-server=utf8 --collation-server=utf8_general_ci --default-authentication-plugin=caching_sha2_password
+    restart: unless-stopped
+    container_name: kairos_mysql_local
+    ports:
+      - "9996:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: XKhNoUj4tfywChp
+      MYSQL_DATABASE: chronos
+      MYSQL_USER: chronos
+      MYSQL_PASSWORD: scZKgG76ubQ
+    networks:
+      default:
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pXKhNoUj4tfywChp"]
+      # interval: 10s
+      # timeout: 30s
+      # retries: 5

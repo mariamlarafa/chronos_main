@@ -1,0 +1,41 @@
+@font-face {
+    font-family: 'MyriadHebrew';
+    src: url('../fonts/MyriadHebrew-Regular.otf') format('opentype');
+  }
+
+  @font-face {
+    font-family: 'MyriadPro';
+    font-weight: bold;
+    src: url('../fonts/MyriadPro-Bold.otf') format('opentype');
+  }
+
+  @font-face {
+    font-family: 'MyriadPro';
+    font-weight: bold;
+    font-style: italic;
+    src: url('../fonts/MyriadPro-BoldIt.otf') format('opentype');
+  }
+
+  @font-face {
+    font-family: 'MyriadPro';
+    font-style: italic;
+    src: url('../fonts/MyriadPro-It.otf') format('opentype');
+  }
+
+  @font-face {
+    font-family: 'MyriadPro';
+    src: url('../fonts/MyriadPro-Regular.otf') format('opentype');
+  }
+
+  @font-face {
+    font-family: 'MyriadVariableConcept';
+    font-style: italic;
+    src: url('../fonts/MyriadVariableConcept-Italic.otf') format('opentype');
+  }
+
+  @font-face {
+    font-family: 'MyriadVariableConcept';
+    src: url('../fonts/MyriadVariableConcept-Roman.otf') format('opentype');
+  }
+
+  /* Set font family

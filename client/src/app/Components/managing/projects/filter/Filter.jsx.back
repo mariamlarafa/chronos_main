@@ -1,0 +1,176 @@
+import Autocomplete from "@mui/material/Autocomplete";
+import Avatar from "@mui/material/Avatar";
+import Box from "@mui/material/Box";
+import TextField from "@mui/material/TextField";
+import React from "react";
+import { filterStyles } from "./style";
+import OutlinedInput from "@mui/material/OutlinedInput";
+import FilledInput from '@mui/material/FilledInput';
+
+import InputLabel from "@mui/material/InputLabel";
+import MenuItem from "@mui/material/MenuItem";
+import FormControl from "@mui/material/FormControl";
+import ListItemText from "@mui/material/ListItemText";
+import Select from "@mui/material/Select";
+import Checkbox from "@mui/material/Checkbox";
+import useGetStateFromStore from "../../../../../hooks/manage/getStateFromStore";
+
+const ITEM_HEIGHT = 48;
+const ITEM_PADDING_TOP = 8;
+
+const MenuProps = {
+  PaperProps: {
+    style: {
+      maxHeight: ITEM_HEIGHT * 4.5 + ITEM_PADDING_TOP,
+      width: 250
+    }
+  }
+};
+const Filter = (props) => {
+  const {
+    items,
+    handleChange,
+    filterType,
+    label,
+    open,
+    name,
+    handleClose,
+    handleOpen
+  } = props;
+  const classes = filterStyles();
+
+  const { filterType: active } = useGetStateFromStore("manage", "addProject");
+
+  const getInitials = (fullName) => {
+    let first;
+    let second;
+    const splits = fullName.split(" ");
+    first = splits[0] ? splits[0][0].toUpperCase() : "";
+    second = splits[1] ? splits[1][0].toUpperCase() : "";
+
+    return `${first}${second}`;
+  };
+
+  const filterValues = active?.filter((ft) => ft.type === name)[0];
+
+  return (
+    <div
+      className={`${classes.filter} ${
+        filterType === "manager.fullName" ? "wide" : ""
+      }`}
+    >
+      {filterType === "manager.fullName" ? (
+        // <Autocomplete
+        //   disableCloseOnSelect
+        //   multiple
+        //   defaultValue={[]}
+        //   options={items}
+        //   name={name}
+        //   getOptionLabel={(option) => option?.fullName}
+        //   onChange={(event, value) => handleChange(value)}
+        //   renderOption={(props, option) => (
+        // <Box component="li" {...props}>
+        //   {option.image ? (
+        //     <Avatar
+        //       sx={{ width: 24, height: 24 }}
+        //       alt={option?.fullName}
+        //       src={`${process.env.REACT_APP_SERVER_URL}${option.image}`}
+        //     />
+        //   ) : (
+        //     <Avatar sx={{ width: 24, height: 24 }}>
+        //       {getInitials(option?.fullName)}
+        //     </Avatar>
+        //   )}
+        //   <span className={classes.managerFullName}>
+        //     {" "}
+        //     {option?.fullName}
+        //   </span>
+        // </Box>
+        //   )}
+        //   renderInput={(params) => (
+        //     <TextField
+        //       {...params}
+        //       label={label}
+        //       size="small"
+        //       inputProps={{
+        //         ...params.inputProps,
+        //         autoComplete: "new-password" // disable autocomplete and autofill
+        //       }}
+        //     />
+        //   )}
+        // />
+        <FormControl sx={{ width: "100%" }}>
+          <Select
+            native
+            name={name}
+            open={open}
+            onOpen={handleOpen}
+            onClose={handleClose}
+            labelId="demo-multiple-checkbox-label"
+            id="demo-multiple-checkbox"
+            multiple
+            value={[]}
+            onChange={handleChange}
+            input={<OutlinedInput size="small" />}
+            renderValue={(selected) => selected.join(", ")}
+            MenuProps={MenuProps}
+          >
+            {items.map((option, key) => (
+              <MenuItem key={key} value={option}>
+                <Checkbox
+                  checked={filterValues?.value.indexOf(option.fullName) > -1}
+                />
+
+                {option.image ? (
+                  <Avatar
+                    sx={{ width: 24, height: 24 }}
+                    alt={option?.fullName}
+                    src={`${process.env.REACT_APP_SERVER_URL}${option.image}`}
+                  />
+                ) : (
+                  <Avatar sx={{ width: 24, height: 24 }}>
+                    {getInitials(option?.fullName)}
+                  </Avatar>
+                )}
+                <span className={classes.managerFullName}>
+                  {" "}
+                  {option?.fullName}
+                </span>
+
+                <ListItemText primary={name} />
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      ) : (
+        <FormControl sx={{ width: "100%" }}>
+          <Select
+            name={name}
+            open={open}
+            onOpen={handleOpen}
+            onClose={handleClose}
+            labelId="demo-multiple-checkbox-label"
+            id="demo-multiple-checkbox"
+            multiple
+            value={[]}
+            onChange={handleChange}
+            input={<OutlinedInput size="small" />}
+            renderValue={(selected) => selected.join(", ")}
+            MenuProps={MenuProps}
+          >
+            {items.map((item) => (
+              <MenuItem key={item} value={item}>
+                {name !== "taskState" && (
+                  <Checkbox checked={filterValues?.value.indexOf(item) > -1} />
+                )}
+                <ListItemText primary={item} />
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      )}
+    </div>
+  );
+};
+
+export default Filter;

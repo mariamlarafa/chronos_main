@@ -1,0 +1,404 @@
+import "../db/relations.js";
+
+import moment from "moment";
+import {
+  Intervenant,
+  Lot,
+  Project,
+  ProjectLots,
+  Task,
+  User,
+  UserProfile
+} from "../db/relations.js";
+// prettier-ignore
+// import userDb from "./users.db.json"  with { type: "json" };
+import {
+  INTERVENANT_ROLE,
+  PROJECT_MANAGER_ROLE,
+  SUPERUSER_ROLE,
+  STATE_ABANDONED,
+  STATE_BLOCKED,
+  STATE_DOING,
+  STATE_DONE
+} from "../constants/constants.js";
+import {
+  encryptPassword,
+  getUserByEmail,
+  serializeProfile
+} from "../controllers/users/lib.js";
+import { config } from "../environment.config.js";
+
+import { readFile } from 'fs/promises';
+
+var db =[]
+var userDb =[]
+
+
+function getTableByName(tableName) {
+
+  return db.filter(
+    (table) => table.name.toLowerCase() === tableName && table.type === "table"
+  )[0];
+}
+
+function resetTime(dateString) {
+  if (dateString) {
+    return moment(dateString).startOf("day").toDate();
+  }
+  return null;
+}
+
+function extractProjectCode(orgCode) {
+  if (orgCode.length < 5) return orgCode;
+  return orgCode.slice(0, orgCode.length - 1);
+}
+
+function determineProjectState(state) {
+  if (!state) return 1;
+  switch (parseInt(state)) {
+    case 1:
+      return STATE_DOING;
+    case 2:
+      return STATE_DONE;
+    case 3:
+      return STATE_ABANDONED;
+    default:
+      return STATE_DOING;
+  }
+}
+
+function determineIfCodeCustomized(code, customID) {
+  let codePortion = customID.split("-")[0];
+  if (codePortion !== code) {
+    return true;
+  }
+  return false;
+}
+
+async function runLotMigration(lotList, createdProjectId, verbose) {
+  if (verbose) {
+    console.info("Project created now creating the projectLots");
+  }
+  try {
+    let lots = lotList.split(";");
+
+    let lotData = {};
+    lots.forEach(async (lot) => {
+      lotData = await Lot.findOne({
+        where: { name: lot }
+      });
+      await ProjectLots.create({
+        projectID: createdProjectId,
+        lotID: lotData?.id
+      });
+    });
+  } catch (error) {
+    console.error(`migration lots failed: ${error}`);
+  }
+}
+
+function determineTaskState(status) {
+  switch (parseInt(status)) {
+    case 1:
+      return STATE_DOING;
+    case 2:
+      return STATE_DONE;
+    case 3:
+      return STATE_BLOCKED;
+    case 4:
+      return STATE_DONE;
+    default:
+      return STATE_ABANDONED;
+  }
+}
+async function runTaskMigration(createdProjectId, originalProjectId, verbose) {
+  try {
+    let taskTable = getTableByName("tacheprojet").data;
+    //gather all the tasks of that project
+    let projectTasks = taskTable.filter(
+      (task) => task.projet === originalProjectId
+    );
+    let task = {};
+    for (const idx in projectTasks) {
+      let taskEntry = projectTasks[idx];
+      task = {
+        name: taskEntry.libelle,
+        startDate: resetTime(taskEntry.datesDebut),
+        dueDate: resetTime(taskEntry.datesEcheance),
+        blockedDate:
+          parseInt(taskEntry.etatTache) === 4
+            ? resetTime(taskEntry.datesFin)
+            : null,
+        doneDate:
+          determineTaskState(taskEntry.etatTache) === STATE_DONE
+            ? resetTime(taskEntry.datesFin)
+            : null,
+        isVerified: parseInt(taskEntry.etatTache) === 2 ? true : false,
+        totalHours: 0,
+        state: determineTaskState(taskEntry.etatTache)
+      };
+      if (verbose) {
+        console.info("creating task", task.name);
+      }
+      const newTask = await Task.create({ ...task });
+      if (verbose) {
+        console.info(
+          `creating link between task ${newTask.id} and the project ${createdProjectId}`
+        );
+      }
+
+      await Intervenant.create({
+        projectID: createdProjectId,
+        taskID: newTask.id,
+        intervenantID: await searchForUserId(taskEntry.utilisateur, null)
+      });
+    }
+
+    return;
+  } catch (error) {
+    console.error(`migration task failed: ${error}`);
+  }
+}
+
+async function searchForUserId(userUUID, defaultID) {
+  try {
+    if (!userUUID) return defaultID;
+    const userTable = getTableByName("utilisateur")?.data;
+    // finding the user with uuid
+    const user = userTable.filter((entry) => entry.Oid === userUUID)[0];
+    if (!user?.email) return defaultID;
+
+
+    const searched = await getUserByEmail(user?.email);
+    if (!searched) return defaultID;
+    return searched.id;
+  } catch (error) {
+    console.error(`we couldn't identify the user id because f  ${error}`);
+    return defaultID;
+  }
+}
+
+async function runProjectsMigration(verbose) {
+  try {
+    if (!verbose) {
+      console.info("this script will be running silently");
+    }
+
+    const projectsTable = getTableByName("projet");
+    console.log(config.admin_email)
+    const admin = await User.findOne({ where: { email: config.admin_email } }); //
+    let instance = {};
+    let manager = null;
+    projectsTable?.data.forEach(async (project) => {
+      manager = await searchForUserId(project.utilisateur, admin.id);
+      instance = {
+        code: extractProjectCode(project.code),
+        customId: project.designation.replace("-", "_"),
+        name: project.libelle,
+        startDate: resetTime(project.datesDebut),
+        dueDate: resetTime(project.datesFin),
+        priority: 1, //TODO: figure out which column represents the priority
+        createdBy: admin.id,
+        manager: manager,
+        managerHours: 0,
+        state: determineProjectState(project.etatProjet),
+        phaseID: parseInt(project.natureProjet) + 1,
+        isCodeCustomized: determineIfCodeCustomized(
+          project.code,
+          project.designation
+        )
+      };
+
+      const createdProject = await Project.create({ ...instance });
+      if (project.phaseP) {
+        const prevPhaseInfo = projectsTable?.data.filter(
+          (p) => p.Oid === project.phaseP
+        )[0];
+        const prevPhase = await Project.findOne({
+          where: {
+            code: extractProjectCode(prevPhaseInfo.code),
+            customId: prevPhaseInfo.designation.replace("-", "_")
+          }
+        });
+        createdProject.prevPhase = prevPhase? prevPhase.id:null;
+        createdProject.save();
+      }
+
+      // LOTS MIGRATION
+      if (project.lots) {
+        runLotMigration(project.lots, createdProject.id, verbose);
+      }
+      //running TASK migrations along side the intervenant migration
+      runTaskMigration(createdProject.id, project.Oid, verbose);
+    });
+
+      console.info("Migration finished successfully");
+
+  } catch (error) {
+    console.error(`migration projects failed: ${error}`);
+  }
+}
+
+// USER MIGRATION SECTION
+function determineUserRole(entryRole) {
+  if (!entryRole) return INTERVENANT_ROLE;
+  switch (entryRole) {
+    case "Chef de projet":
+      return PROJECT_MANAGER_ROLE;
+    case "intervenant":
+      return INTERVENANT_ROLE;
+    case "Administrateur":
+      return SUPERUSER_ROLE;
+    default:
+      return INTERVENANT_ROLE;
+  }
+}
+
+async function creatingUserProfile(user, userInfo, verbose) {
+  if (verbose) {
+    console.info(`creating the user  ${user.email} profile`);
+  }
+  try {
+    //search the user name and last to determine the user exists already
+    const isNameLastNameExists = await UserProfile.findOne({
+      where: { name: userInfo.name, lastName: userInfo.lastName }
+    });
+
+    if (isNameLastNameExists) {
+      await user.destroy();
+      if (verbose) {
+        console.info(
+          `${user.email} destroyed because the user ${userInfo.name} and ${userInfo.lastName} exists}`
+        );
+      }
+      return;
+    }
+    //serializing the data : getting ready for inserting
+    const profile = serializeProfile(userInfo, user.id);
+    if (!profile) {
+      console.error(`something went wrong: in serialization profile`);
+    }
+    //creating the profile
+    const newProfile = await UserProfile.create({ ...profile });
+    if (verbose) {
+      console.info(`profile created for user ${user.email}`);
+    }
+
+    return newProfile.dataValues;
+  } catch (error) {
+    console.error(`creating user profile failed: ${error}`);
+    return;
+  }
+}
+
+async function runUserMMigration(verbose) {
+  try {
+    let entry = {};
+
+
+
+    for (const idx in userDb) {
+      entry = userDb[idx];
+      const user = await getUserByEmail(entry.email);
+      if (user) {
+        if (verbose) {
+          console.info(`skipping the user: ${user.email}: already exists`);
+        }
+        continue;
+      }
+      //check for password
+      if (verbose) {
+        console.info(
+          `the user ${entry.email} doesn't exist we will proceed with the migration`
+        );
+        console.info("encrypting password");
+      }
+      let encryptedPassword = await encryptPassword(
+        !entry.password ? config.defaultPassword : entry.password
+      );
+
+      let newUser = {
+        ...entry,
+        password: encryptedPassword,
+        role: determineUserRole(entry.role),
+        isSuperUser: entry.role === "Administrateur" ? true : false,
+        active: true
+      };
+      const createdUser = await User.create({ ...newUser });
+      if (verbose) {
+        console.info(`the user ${createdUser.email} created successfully`);
+      }
+
+      creatingUserProfile(createdUser, entry, verbose);
+
+      console.log("User migrated successfully")
+    }
+  } catch (error) {
+    console.error(`user migration failed: ${error}`);
+  }
+}
+
+
+
+async function importJSON(filePath) {
+  try {
+    const jsonData = await readFile(filePath, 'utf-8');
+    return JSON.parse(jsonData);
+  } catch (error) {
+    console.error(`Error importing JSON file from ${filePath}: ${error.message}`);
+    throw error;
+  }
+}
+
+// console.info(process.argv[3]);
+const switcher = process.argv[3];
+const filePath = process.argv[4];
+
+const verboseOptionIndex = process.argv.indexOf("--verbose");
+const helpOptionIndex = process.argv.indexOf("--help");
+
+// console.log(switcher)
+
+if (helpOptionIndex !== -1){
+  console.log("welcome to the migration script")
+  console.log("Usage: npm run migrate-data-v2 [db|users] file path -- [--verbose]");
+}else{
+  switch (switcher) {
+    case "db":
+      if (filePath && filePath !== '--') {
+        try {
+          const data = await importJSON(filePath)
+          //setting the database to db variable for general access
+          db = data
+          console.log(`Running projects migration `);
+          runProjectsMigration(verboseOptionIndex !== -1 ? true : false);
+        } catch (error) {
+          console.error(error);
+        }
+      } else {
+        console.error("File doesn't exist");
+      }
+      break;
+    case "users":
+      try {
+        const data = await importJSON(filePath)
+          //setting the database to db variable for general access
+          userDb = data
+          console.log(`Running users migration`);
+          runUserMMigration(verboseOptionIndex !== -1 ? true : false);
+      } catch (error) {
+        console.error(error);
+
+      }
+
+      break;
+    default:
+      console.error("invalid action ");
+  }
+}
+
+
+
+
+
+
